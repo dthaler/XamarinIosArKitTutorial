@@ -13,8 +13,13 @@ namespace XamarinIosApp
 
         public ViewController(IntPtr handle) : base(handle)
         {
-            // Lesson: Create Blank Scene
-            this.sceneView = new ARSCNView();
+            // Lesson: Show world origin
+            this.sceneView = new ARSCNView
+            {
+                AutoenablesDefaultLighting = true,
+                DebugOptions = ARSCNDebugOptions.ShowWorldOrigin
+            };
+
             this.View.AddSubview(this.sceneView);
         }
 
@@ -22,7 +27,6 @@ namespace XamarinIosApp
         {
             base.ViewDidLoad();
 
-            // Perform any additional setup after loading the view, typically from a nib.
             this.sceneView.Frame = this.View.Frame;
         }
 
@@ -48,7 +52,6 @@ namespace XamarinIosApp
         public override void DidReceiveMemoryWarning()
         {
             base.DidReceiveMemoryWarning();
-            // Release any cached data, images, etc that aren't in use.
         }
     }
 }
