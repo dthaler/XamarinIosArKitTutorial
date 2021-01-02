@@ -138,5 +138,8 @@
   <ItemGroup>
     <BundleResource Include="Images\pineapple.jpg" />
   </ItemGroup>
+  <ItemGroup>
+    <BundleResource Include="Sounds\sound.mp3" />
+  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.CSharp.targets" />
 </Project>

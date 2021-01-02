@@ -1,4 +1,5 @@
 ﻿using ARKit;
+using AVFoundation;
 using CoreGraphics;
 using Foundation;
 using SceneKit;
@@ -12,8 +13,7 @@ namespace XamarinIosApp
     public partial class ViewController : UIViewController
     {
         private readonly ARSCNView sceneView;
-
-        private SCNNode cubeNode;
+        public AVAudioPlayer player;
 
         public ViewController(IntPtr handle) : base(handle)
         {
@@ -45,24 +45,49 @@ namespace XamarinIosApp
                 WorldAlignment = ARWorldAlignment.Gravity
             }, ARSessionRunOptions.ResetTracking | ARSessionRunOptions.RemoveExistingAnchors);
 
-            cubeNode = new CubeNode(1f, UIColor.Yellow, new SCNVector3(0, 0, 3f));
+            var size = 0.05f;
+            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Purple, new SCNVector3(0, 0, 0)));
+        }
 
-            this.sceneView.Scene.RootNode.AddChildNode(cubeNode);
+        public override void TouchesEnded(NSSet touches, UIEvent evt)
+        {
+            base.TouchesEnded(touches, evt);
 
-            UIButton myButton = new UIButton(UIButtonType.System);
-            myButton.Frame = new CGRect(100, 50, 200, 75);
-            myButton.SetTitle("Change to Red", UIControlState.Normal);
-            myButton.BackgroundColor = UIColor.Green;
-            myButton.Layer.CornerRadius = 5f;
-            myButton.TouchUpInside += (sender, e) => {
+            if (touches.AnyObject is UITouch touch)
+            {
+                var point = touch.LocationInView(this.sceneView);
 
-                var material = new SCNMaterial();
-                material.Diffuse.Contents = UIColor.Red;
+                var hitTestOptions = new SCNHitTestOptions();
 
-                cubeNode.ChildNodes[0].Geometry.Materials = new SCNMaterial[] { material };
+                var hits = this.sceneView.HitTest(point, hitTestOptions);
+                var hit = hits.FirstOrDefault();
+
+                if (hit == null)
+                    return;
+
+                var node = hit.Node;
+
+                if (node == null)
+                    return;
+
+                PlaySound();
+            }
+        }
+
+        public void PlaySound()
+        {
+            NSUrl songURL;
+
+            songURL = new NSUrl($"Sounds/sound.mp3");
+            NSError err;
+            player = new AVAudioPlayer(songURL, "Song", out err);
+            player.Volume = 0.5f;
+            player.FinishedPlaying += delegate
+            {
+                player = null;
             };
 
-            this.View.Add(myButton);
+            player.Play();
         }
 
         public override void ViewDidDisappear(bool animated)
