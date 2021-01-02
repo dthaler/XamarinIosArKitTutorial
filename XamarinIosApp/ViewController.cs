@@ -1,4 +1,5 @@
 ﻿using ARKit;
+using CoreGraphics;
 using Foundation;
 using SceneKit;
 using System;
@@ -11,6 +12,8 @@ namespace XamarinIosApp
     public partial class ViewController : UIViewController
     {
         private readonly ARSCNView sceneView;
+
+        private SCNNode cubeNode;
 
         public ViewController(IntPtr handle) : base(handle)
         {
@@ -38,52 +41,28 @@ namespace XamarinIosApp
             this.sceneView.Session.Run(new ARWorldTrackingConfiguration
             {
                 AutoFocusEnabled = true,
-                PlaneDetection = ARPlaneDetection.Horizontal,
                 LightEstimationEnabled = true,
-                WorldAlignment = ARWorldAlignment.GravityAndHeading
+                WorldAlignment = ARWorldAlignment.Gravity
             }, ARSessionRunOptions.ResetTracking | ARSessionRunOptions.RemoveExistingAnchors);
 
-            var size = 0.05f;
+            cubeNode = new CubeNode(1f, UIColor.Yellow, new SCNVector3(0, 0, 3f));
 
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(-0.1f, 0.1f, 0)));
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(0, 0.1f, 0)));
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(0.1f, 0.1f, 0)));
+            this.sceneView.Scene.RootNode.AddChildNode(cubeNode);
 
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(-0.1f, 0, 0)));
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(0, 0, 0)));
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(0.1f, 0, 0)));
+            UIButton myButton = new UIButton(UIButtonType.System);
+            myButton.Frame = new CGRect(100, 50, 200, 75);
+            myButton.SetTitle("Change to Red", UIControlState.Normal);
+            myButton.BackgroundColor = UIColor.Green;
+            myButton.Layer.CornerRadius = 5f;
+            myButton.TouchUpInside += (sender, e) => {
 
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(-0.1f, -0.1f, 0)));
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(0, -0.1f, 0)));
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Green, new SCNVector3(0.1f, -0.1f, 0)));
-        }
+                var material = new SCNMaterial();
+                material.Diffuse.Contents = UIColor.Red;
 
-        public override void TouchesEnded(NSSet touches, UIEvent evt)
-        {
-            base.TouchesEnded(touches, evt);
+                cubeNode.ChildNodes[0].Geometry.Materials = new SCNMaterial[] { material };
+            };
 
-            if (touches.AnyObject is UITouch touch)
-            {
-                var point = touch.LocationInView(this.sceneView);
-
-                var hitTestOptions = new SCNHitTestOptions();
-
-                var hits = this.sceneView.HitTest(point, hitTestOptions);
-                var hit = hits.FirstOrDefault();
-
-                if (hit == null)
-                    return;
-
-                var node = hit.Node;
-
-                if (node == null)
-                    return;
-
-                var redMaterial = new SCNMaterial();
-                redMaterial.Diffuse.Contents = UIColor.Red;
-
-                node.Geometry.Materials = new SCNMaterial[] { redMaterial };
-            }
+            this.View.Add(myButton);
         }
 
         public override void ViewDidDisappear(bool animated)
