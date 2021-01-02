@@ -13,11 +13,11 @@ namespace XamarinIosApp
 
         public ViewController(IntPtr handle) : base(handle)
         {
-            // Lesson: Show world origin
+            // Lesson: Show feature points
             this.sceneView = new ARSCNView
             {
                 AutoenablesDefaultLighting = true,
-                DebugOptions = ARSCNDebugOptions.ShowWorldOrigin
+                DebugOptions = ARSCNDebugOptions.ShowFeaturePoints
             };
 
             this.View.AddSubview(this.sceneView);
