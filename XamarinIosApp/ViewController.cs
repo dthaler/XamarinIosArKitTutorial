@@ -2,6 +2,7 @@
 using Foundation;
 using SceneKit;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UIKit;
 
@@ -15,7 +16,10 @@ namespace XamarinIosApp
         {
             this.sceneView = new ARSCNView
             {
-                AutoenablesDefaultLighting = true
+                AutoenablesDefaultLighting = true,
+                DebugOptions = ARSCNDebugOptions.ShowFeaturePoints
+                | ARSCNDebugOptions.ShowWorldOrigin,
+                Delegate = new SceneViewDelegate()
             };
 
             this.View.AddSubview(this.sceneView);
@@ -35,30 +39,12 @@ namespace XamarinIosApp
             this.sceneView.Session.Run(new ARWorldTrackingConfiguration
             {
                 AutoFocusEnabled = true,
-                PlaneDetection = ARPlaneDetection.Horizontal,
+                PlaneDetection = ARPlaneDetection.Horizontal | ARPlaneDetection.Vertical,
                 LightEstimationEnabled = true,
                 WorldAlignment = ARWorldAlignment.GravityAndHeading
             }, ARSessionRunOptions.ResetTracking | ARSessionRunOptions.RemoveExistingAnchors);
-
-            var size = 0.08f;
-            var colour = UIColor.Green;
-            var topRowY = 0.1f;
-            var bottomRowY = 0f;
-
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(-0.2f, topRowY, 0), 0));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(-0.1f, topRowY, 0), 0.004f));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(0, topRowY, 0), 0.008f));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(0.1f, topRowY, 0), 0.012f));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(0.2f, topRowY, 0), 0.016f));
-
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(-0.2f, bottomRowY, 0), 0.020f));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(-0.1f, bottomRowY, 0), 0.024f));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(0f, bottomRowY, 0), 0.028f));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(0.1f, bottomRowY, 0), 0.032f));
-            this.sceneView.Scene.RootNode.AddChildNode(new PlaneNode(size, colour, new SCNVector3(0.2f, bottomRowY, 0), 0.036f));
-
-            // A circle would effectively be a square with corner radius of half the width (0.08f) so a corner radius of 0.04f
         }
+
         public override void ViewDidDisappear(bool animated)
         {
             base.ViewDidDisappear(animated);
@@ -72,29 +58,83 @@ namespace XamarinIosApp
         }
     }
 
-    public class PlaneNode : SCNNode
+    internal class PlaneNode : SCNNode
     {
-        public PlaneNode(float size, UIColor color, SCNVector3 position, float cornerRadius)
-        {
-            var rootNode = new SCNNode
-            {
-                Geometry = CreateGeometry(size, color, cornerRadius),
-                Position = position
-            };
+        private readonly SCNPlane planeGeometry;
 
-            AddChildNode(rootNode);
+        public PlaneNode(ARPlaneAnchor planeAnchor, UIColor colour)
+        {
+            Geometry = (planeGeometry = CreateGeometry(planeAnchor, colour));
         }
 
-        private static SCNGeometry CreateGeometry(float size, UIColor color, float cornerRadius)
+        public void Update(ARPlaneAnchor planeAnchor)
+        {
+            planeGeometry.Width = planeAnchor.Extent.X;
+            planeGeometry.Height = planeAnchor.Extent.Z;
+
+            Position = new SCNVector3(
+                planeAnchor.Center.X,
+                planeAnchor.Center.Y,
+                planeAnchor.Center.Z);
+        }
+
+        private static SCNPlane CreateGeometry(ARPlaneAnchor planeAnchor, UIColor colour)
         {
             var material = new SCNMaterial();
-            material.Diffuse.Contents = color;
+            material.Diffuse.Contents = colour;
+            material.DoubleSided = true;
+            material.Transparency = 0.8f;
 
-            var geometry = SCNPlane.Create(size, size);
+            var geometry = SCNPlane.Create(planeAnchor.Extent.X, planeAnchor.Extent.Z);
             geometry.Materials = new[] { material };
-            geometry.CornerRadius = cornerRadius;
 
             return geometry;
+        }
+    }
+
+    public class SceneViewDelegate : ARSCNViewDelegate
+    {
+        private readonly IDictionary<NSUuid, PlaneNode> planeNodes = new Dictionary<NSUuid, PlaneNode>();
+
+        public override void DidAddNode(ISCNSceneRenderer renderer, SCNNode node, ARAnchor anchor)
+        {
+            if (anchor is ARPlaneAnchor planeAnchor)
+            {
+                UIColor colour;
+
+                if (planeAnchor.Alignment == ARPlaneAnchorAlignment.Vertical)
+                {
+                    colour = UIColor.Red;
+                }
+                else
+                {
+                    colour = UIColor.Blue;
+                }
+
+                var planeNode = new PlaneNode(planeAnchor, colour);
+                var angle = (float)(-Math.PI / 2);
+                planeNode.EulerAngles = new SCNVector3(angle, 0, 0);
+
+                node.AddChildNode(planeNode);
+                this.planeNodes.Add(anchor.Identifier, planeNode);
+            }
+        }
+
+        public override void DidRemoveNode(ISCNSceneRenderer renderer, SCNNode node, ARAnchor anchor)
+        {
+            if (anchor is ARPlaneAnchor planeAnchor)
+            {
+                this.planeNodes[anchor.Identifier].RemoveFromParentNode();
+                this.planeNodes.Remove(anchor.Identifier);
+            }
+        }
+
+        public override void DidUpdateNode(ISCNSceneRenderer renderer, SCNNode node, ARAnchor anchor)
+        {
+            if (anchor is ARPlaneAnchor planeAnchor)
+            {
+                this.planeNodes[anchor.Identifier].Update(planeAnchor);
+            }
         }
     }
 }
