@@ -3,6 +3,7 @@ using AVFoundation;
 using CoreGraphics;
 using Foundation;
 using SceneKit;
+using SpriteKit;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,15 +14,12 @@ namespace XamarinIosApp
     public partial class ViewController : UIViewController
     {
         private readonly ARSCNView sceneView;
-        public AVAudioPlayer player;
 
         public ViewController(IntPtr handle) : base(handle)
         {
             this.sceneView = new ARSCNView
             {
-                AutoenablesDefaultLighting = true,
-                DebugOptions = ARSCNDebugOptions.ShowFeaturePoints
-                | ARSCNDebugOptions.ShowWorldOrigin
+                AutoenablesDefaultLighting = true
             };
 
             this.View.AddSubview(this.sceneView);
@@ -45,49 +43,26 @@ namespace XamarinIosApp
                 WorldAlignment = ARWorldAlignment.Gravity
             }, ARSessionRunOptions.ResetTracking | ARSessionRunOptions.RemoveExistingAnchors);
 
-            var size = 0.05f;
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Purple, new SCNVector3(0, 0, 0)));
-        }
+            //var videoNode = new SKVideoNode("Videos/big-buck-bunny-wide.mp4");
+            NSUrl videoUrl = new NSUrl("https://archive.org/download/BigBuckBunny_328/BigBuckBunny_512kb.mp4");
+            var videoNode = new SKVideoNode(videoUrl);
 
-        public override void TouchesEnded(NSSet touches, UIEvent evt)
-        {
-            base.TouchesEnded(touches, evt);
+            // Without this the video will be inverted upside down and back to front
+            videoNode.YScale = -1;
+            videoNode.Play();
 
-            if (touches.AnyObject is UITouch touch)
-            {
-                var point = touch.LocationInView(this.sceneView);
+            var videoScene = new SKScene();
+            videoScene.Size = new CoreGraphics.CGSize(416, 240);
+            videoScene.ScaleMode = SKSceneScaleMode.AspectFill;
+            videoNode.Position = new CoreGraphics.CGPoint(videoScene.Size.Width / 2, videoScene.Size.Height / 2);
+            videoScene.AddChild(videoNode);
 
-                var hitTestOptions = new SCNHitTestOptions();
+            // These are set to be the same aspect ratio as the video itself (1.77 in this case)
+            var width = 0.5f;
+            float length = (float)((width * videoScene.Size.Height) / videoScene.Size.Width);
+            var planeNode = new PlaneNode(width, length, new SCNVector3(0, 0, -0.5f), videoScene);
 
-                var hits = this.sceneView.HitTest(point, hitTestOptions);
-                var hit = hits.FirstOrDefault();
-
-                if (hit == null)
-                    return;
-
-                var node = hit.Node;
-
-                if (node == null)
-                    return;
-
-                PlaySound();
-            }
-        }
-
-        public void PlaySound()
-        {
-            NSUrl songURL;
-
-            songURL = new NSUrl($"Sounds/sound.mp3");
-            NSError err;
-            player = new AVAudioPlayer(songURL, "Song", out err);
-            player.Volume = 0.5f;
-            player.FinishedPlaying += delegate
-            {
-                player = null;
-            };
-
-            player.Play();
+            this.sceneView.Scene.RootNode.AddChildNode(planeNode);
         }
 
         public override void ViewDidDisappear(bool animated)
@@ -103,25 +78,26 @@ namespace XamarinIosApp
         }
     }
 
-    public class CubeNode : SCNNode
+    public class PlaneNode : SCNNode
     {
-        public CubeNode(float size, UIColor color, SCNVector3 position)
+        public PlaneNode(float width, float length, SCNVector3 position, SKScene videoScene)
         {
             var rootNode = new SCNNode
             {
-                Geometry = CreateGeometry(size, color),
+                Geometry = CreateGeometry(width, length, videoScene),
                 Position = position
             };
 
             AddChildNode(rootNode);
         }
 
-        private static SCNGeometry CreateGeometry(float size, UIColor color)
+        private static SCNGeometry CreateGeometry(float width, float length, SKScene videoScene)
         {
             var material = new SCNMaterial();
-            material.Diffuse.Contents = color;
+            material.Diffuse.Contents = videoScene;
+            material.DoubleSided = true;
 
-            var geometry = SCNBox.Create(size, size, size, 0);
+            var geometry = SCNPlane.Create(width, length);
             geometry.Materials = new[] { material };
 
             return geometry;
