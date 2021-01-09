@@ -3,6 +3,7 @@ using AVFoundation;
 using CoreGraphics;
 using Foundation;
 using SceneKit;
+using SpriteKit;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,7 +46,7 @@ namespace XamarinIosApp
                 LightEstimationEnabled = true,
                 WorldAlignment = ARWorldAlignment.GravityAndHeading,
                 DetectionImages = detectionImages,
-                MaximumNumberOfTrackedImages = 1
+                MaximumNumberOfTrackedImages = 10
 
             }, ARSessionRunOptions.ResetTracking | ARSessionRunOptions.RemoveExistingAnchors);
         }
@@ -71,15 +72,41 @@ namespace XamarinIosApp
             {
                 var detectedImage = imageAnchor.ReferenceImage;
 
+                // Add video node
+                NSUrl videoUrl = new NSUrl("https://archive.org/download/BigBuckBunny_328/BigBuckBunny_512kb.mp4");
+                var videoNode = new SKVideoNode(videoUrl);
+                //var videoNode = new SKVideoNode("Videos/leasing-intro.mp4");
+                videoNode.YScale = -1;
+                videoNode.Play();
+
+                var videoScene = new SKScene();
+                videoScene.Size = new CoreGraphics.CGSize(416, 240);
+                videoScene.ScaleMode = SKSceneScaleMode.AspectFill;
+                videoNode.Position = new CoreGraphics.CGPoint(videoScene.Size.Width / 2, videoScene.Size.Height / 2);
+                videoScene.AddChild(videoNode);
+
                 var width = detectedImage.PhysicalSize.Width;
                 var length = detectedImage.PhysicalSize.Height;
-                var planeNode = new PlaneNode(width, length, new SCNVector3(0, 0, 0), UIColor.Blue);
+                var planeNode = new PlaneNode(width, length, new SCNVector3(0, 0, 0), videoScene);
 
+                // Euler angles?
                 float angle = (float)(-Math.PI / 2);
                 planeNode.EulerAngles = new SCNVector3(angle, 0, 0);
 
                 node.AddChildNode(planeNode);
             }
+        }
+
+        public static SCNNode CreateModelNodeFromFile(string filePath, string rootNodeName)
+        {
+            var sceneFromFile = SCNScene.FromFile(filePath);
+
+            var model = sceneFromFile.RootNode.FindChildNode(rootNodeName, true);
+
+            model.Scale = new SCNVector3(0.01f, 0.2f, 0.01f);
+            model.Position = new SCNVector3(0, 0.2f, 0);
+
+            return model;
         }
 
         public override void DidRemoveNode(ISCNSceneRenderer renderer, SCNNode node, ARAnchor anchor)
@@ -99,21 +126,21 @@ namespace XamarinIosApp
 
     public class PlaneNode : SCNNode
     {
-        public PlaneNode(nfloat width, nfloat length, SCNVector3 position, UIColor colour)
+        public PlaneNode(nfloat width, nfloat length, SCNVector3 position, SKScene videoScene)
         {
             var rootNode = new SCNNode
             {
-                Geometry = CreateGeometry(width, length, colour),
+                Geometry = CreateGeometry(width, length, videoScene),
                 Position = position
             };
 
             AddChildNode(rootNode);
         }
 
-        private static SCNGeometry CreateGeometry(nfloat width, nfloat length, UIColor colour)
+        private static SCNGeometry CreateGeometry(nfloat width, nfloat length, SKScene videoScene)
         {
             var material = new SCNMaterial();
-            material.Diffuse.Contents = colour;
+            material.Diffuse.Contents = videoScene;
             material.DoubleSided = false;
 
             var geometry = SCNPlane.Create(width, length);
