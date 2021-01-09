@@ -13,15 +13,13 @@ namespace XamarinIosApp
     public partial class ViewController : UIViewController
     {
         private readonly ARSCNView sceneView;
-        public AVAudioPlayer player;
 
         public ViewController(IntPtr handle) : base(handle)
         {
             this.sceneView = new ARSCNView
             {
                 AutoenablesDefaultLighting = true,
-                DebugOptions = ARSCNDebugOptions.ShowFeaturePoints
-                | ARSCNDebugOptions.ShowWorldOrigin
+                Delegate = new SceneViewDelegate()
             };
 
             this.View.AddSubview(this.sceneView);
@@ -38,56 +36,18 @@ namespace XamarinIosApp
         {
             base.ViewDidAppear(animated);
 
+            var detectionImages = ARReferenceImage.GetReferenceImagesInGroup("AR Resources", null);
+
             this.sceneView.Session.Run(new ARWorldTrackingConfiguration
             {
                 AutoFocusEnabled = true,
+                PlaneDetection = ARPlaneDetection.Horizontal | ARPlaneDetection.Vertical,
                 LightEstimationEnabled = true,
-                WorldAlignment = ARWorldAlignment.Gravity
+                WorldAlignment = ARWorldAlignment.GravityAndHeading,
+                DetectionImages = detectionImages,
+                MaximumNumberOfTrackedImages = 1
+
             }, ARSessionRunOptions.ResetTracking | ARSessionRunOptions.RemoveExistingAnchors);
-
-            var size = 0.05f;
-            this.sceneView.Scene.RootNode.AddChildNode(new CubeNode(size, UIColor.Purple, new SCNVector3(0, 0, 0)));
-        }
-
-        public override void TouchesEnded(NSSet touches, UIEvent evt)
-        {
-            base.TouchesEnded(touches, evt);
-
-            if (touches.AnyObject is UITouch touch)
-            {
-                var point = touch.LocationInView(this.sceneView);
-
-                var hitTestOptions = new SCNHitTestOptions();
-
-                var hits = this.sceneView.HitTest(point, hitTestOptions);
-                var hit = hits.FirstOrDefault();
-
-                if (hit == null)
-                    return;
-
-                var node = hit.Node;
-
-                if (node == null)
-                    return;
-
-                PlaySound();
-            }
-        }
-
-        public void PlaySound()
-        {
-            NSUrl songURL;
-
-            songURL = new NSUrl($"Sounds/sound.mp3");
-            NSError err;
-            player = new AVAudioPlayer(songURL, "Song", out err);
-            player.Volume = 0.5f;
-            player.FinishedPlaying += delegate
-            {
-                player = null;
-            };
-
-            player.Play();
         }
 
         public override void ViewDidDisappear(bool animated)
@@ -103,25 +63,60 @@ namespace XamarinIosApp
         }
     }
 
-    public class CubeNode : SCNNode
+    public class SceneViewDelegate : ARSCNViewDelegate
     {
-        public CubeNode(float size, UIColor color, SCNVector3 position)
+        public override void DidAddNode(ISCNSceneRenderer renderer, SCNNode node, ARAnchor anchor)
+        {
+            if (anchor is ARImageAnchor imageAnchor)
+            {
+                var detectedImage = imageAnchor.ReferenceImage;
+
+                var width = detectedImage.PhysicalSize.Width;
+                var length = detectedImage.PhysicalSize.Height;
+                var planeNode = new PlaneNode(width, length, new SCNVector3(0, 0, 0), UIColor.Blue);
+
+                float angle = (float)(-Math.PI / 2);
+                planeNode.EulerAngles = new SCNVector3(angle, 0, 0);
+
+                node.AddChildNode(planeNode);
+            }
+        }
+
+        public override void DidRemoveNode(ISCNSceneRenderer renderer, SCNNode node, ARAnchor anchor)
+        {
+            if (anchor is ARPlaneAnchor planeAnchor)
+            {
+            }
+        }
+
+        public override void DidUpdateNode(ISCNSceneRenderer renderer, SCNNode node, ARAnchor anchor)
+        {
+            if (anchor is ARPlaneAnchor planeAnchor)
+            {
+            }
+        }
+    }
+
+    public class PlaneNode : SCNNode
+    {
+        public PlaneNode(nfloat width, nfloat length, SCNVector3 position, UIColor colour)
         {
             var rootNode = new SCNNode
             {
-                Geometry = CreateGeometry(size, color),
+                Geometry = CreateGeometry(width, length, colour),
                 Position = position
             };
 
             AddChildNode(rootNode);
         }
 
-        private static SCNGeometry CreateGeometry(float size, UIColor color)
+        private static SCNGeometry CreateGeometry(nfloat width, nfloat length, UIColor colour)
         {
             var material = new SCNMaterial();
-            material.Diffuse.Contents = color;
+            material.Diffuse.Contents = colour;
+            material.DoubleSided = false;
 
-            var geometry = SCNBox.Create(size, size, size, 0);
+            var geometry = SCNPlane.Create(width, length);
             geometry.Materials = new[] { material };
 
             return geometry;
