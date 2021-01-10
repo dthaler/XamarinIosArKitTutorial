@@ -2,3 +2,4 @@
 bin
 obj
 XamarinIosApp.csproj.user
+*.user
