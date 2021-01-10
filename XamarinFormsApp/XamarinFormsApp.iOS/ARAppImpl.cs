@@ -14,8 +14,15 @@ namespace XamarinFormsApp.iOS
         {
             // This is in native code; invoke the native UI
             var viewController = new ViewController();
+
+#if false
+            // Modally run the view controller.
             UIApplication.SharedApplication.KeyWindow.RootViewController.
               PresentViewController(viewController, true, null);
+#else
+            // Replace the view controller.
+            UIApplication.SharedApplication.KeyWindow.RootViewController = viewController;
+#endif
         }
     }
 }
