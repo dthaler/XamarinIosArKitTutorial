@@ -19,7 +19,7 @@
                 </FormattedString>
             </Label.FormattedText>
         </Label>
-        <Button Text="Click Me" VerticalOptions="Center" HorizontalOptions="Center" Clicked="Button_Clicked" />
+        <Button Text="ContentPage with AR view" VerticalOptions="Center" HorizontalOptions="Center" Clicked="ContentPageView_Clicked" />
     </StackLayout>
 
 </ContentPage>

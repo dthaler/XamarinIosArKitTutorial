@@ -8,11 +8,6 @@ using Xamarin.Forms;
 
 namespace XamarinFormsApp
 {
-    public interface IARApp
-    {
-        void LaunchAR(); // Note that interface members are public by default
-    }
-
     public partial class MainPage : ContentPage
     {
         public MainPage()
@@ -20,9 +15,16 @@ namespace XamarinFormsApp
             InitializeComponent();
         }
 
-        private void Button_Clicked(object sender, EventArgs e)
+        private async void ContentPageView_Clicked(object sender, EventArgs e)
         {
-            DependencyService.Get<IARApp>().LaunchAR(); // Launch AR
+#if true
+            // Allow hitting Back to get back to here.
+            await Navigation.PushAsync(new CustomScanPage());
+#else
+            // Replace this page so we can't hit Back to get back to here.
+            Navigation.InsertPageBefore(new CustomScanPage(), this);
+            await Navigation.PopAsync();
+#endif
         }
     }
 }

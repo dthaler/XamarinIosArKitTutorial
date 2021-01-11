@@ -10,7 +10,13 @@ namespace XamarinFormsApp
         {
             InitializeComponent();
 
+#if false
+            // Use this if we only have one Xamarin.Forms page.
             MainPage = new MainPage();
+#else
+            // Use this to allow navigating between multiple Xamarin.Forms pages.
+            MainPage = new NavigationPage(new MainPage());
+#endif
         }
 
         protected override void OnStart()
